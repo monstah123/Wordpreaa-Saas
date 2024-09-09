@@ -1,23 +1,111 @@
-as an expert copywriter specialized in hook generation, your task is to analyze the [Provided_Hook_Examples] 
-and use the templates that fit most to generate 3 new Hooks for the following topic: {digital marketing tips} and Usage in: {short video}. The output should be a Only The list of Hooks with the type.
-
-
+function openai_generate_text_basic() {    
+ 
+// Add CORS headers
+     header('Access-Control-Allow-Origin: *'); // Allows all origins
+     header('Access-Control-Allow-Methods: GET, POST, OPTIONS'); // Specifies the allowed methods
+     header('Access-Control-Allow-Headers: Content-Type, Authorization'); // Specifies the allowed headers 
+    
+    // check if user is logged in
+    if (!is_user_logged_in()) {
+       wp_send_json("LOGIN_FIRST");
+    }
+    
+    // check if user has balance
+    $user_id = get_current_user_id();
+    $balance = mycred_get_users_balance($user_id);
+    if ($balance < 3) {
+        wp_send_json("NO_BALANCE");
+    }
+    
+    // Get the topic from the AJAX request
+    $topic = $_POST['topic'];
+    $usage = $_POST['usage'];
+    $prompt = "as an expert copywriter specialized in hook generation, your task is to analyze the [Provided_Hook_Examples] and use the templates that fit most to generate 3 new Hooks for the following topic: {" . $topic . "} and Usage in: {" . $usage . "}. The output should be ONLY valid JSON as follows:
+[
+  {{
+    \"hook_type\": \"The chosen hook type\",
+    \"hook\": \"the generated hook\"
+  }},
+  {{
+    \"hook_type\": \"The chosen hook type\",
+    \"hook\": \"the generated hook
+  }},
+  {{
+    \"hook_type\": \"The chosen hook type\",
+    \"hook\": \"the generated hook\"
+  }}
+]
+ 
 [Provided_Hook_Examples]:
-"Hook Type,Template,Use In
-Strong sentence,"[Topic] won’t prepare you for [specific aspect].",Social posts, email headlines, short content
-The Intriguing Question,"What’s the [adjective describing difference] difference between [Subject 1] and [Subject 2]?",Video intros, email headlines, social posts
-Fact,"Did you know that [Interesting Fact about a Topic]?",Video intros, email headlines, social posts, short content
-Metaphor,"[Subject] is like [Metaphor]; [Explanation of Metaphor].",Video intros, email headlines, short content
-Story,"[Time Frame], [I/We/Subject] was/were [Situation]. Now, [Current Situation].",Video intros, short content
-Statistical,"Nearly 70% of [Population] experience [Phenomenon] at least once in their lives.",Blog posts, reports, presentations
-Quotation,"[Famous Person] once said, '[Quotation related to Topic]'.",Speeches, essays, social posts
-Challenge,"Most people believe [Common Belief], but [Contradictory Statement].",Debates, persuasive content, op-eds
-Visual Imagery,"Imagine [Vivid Description of a Scenario].",Creative writing, advertising, storytelling
-Call-to-Action,"If you’ve ever [Experience/Desire], then [Action to take].",Marketing content, motivational speeches, campaigns
-Historical Reference,"Back in [Year/Period], [Historical Event] changed the way we think about [Topic].",Educational content, documentaries, historical analyses
-Anecdotal,"Once, [Short Anecdote related to Topic].",Personal blogs, speeches, narrative content
-Humorous,"Why did [Topic] cross the road? To [Punchline].",Social media, entertaining content, ice-breakers
-Controversial Statement,"[Controversial Statement about a Topic].",Debates, opinion pieces, discussion forums
-Rhetorical Question,"Have you ever stopped to think about [Thought-Provoking Question]? ",Speeches, persuasive essays, social posts
-"
-The Hooks List:\n\n
+\"Hook Type,Template,Use In
+Strong sentence,\"[Topic] won’t prepare you for [specific aspect].\",Social posts, email headlines, short content
+The Intriguing Question,\"What’s the [adjective describing difference] difference between [Subject 1] and [Subject 2]?\",Video intros, email headlines, social posts
+Fact,\"Did you know that [Interesting Fact about a Topic]?\",Video intros, email headlines, social posts, short content
+Metaphor,\"[Subject] is like [Metaphor]; [Explanation of Metaphor].\",Video intros, email headlines, short content
+Story,\"[Time Frame], [I/We/Subject] was/were [Situation]. Now, [Current Situation].\",Video intros, short content
+Statistical,\"Nearly 70% of [Population] experience [Phenomenon] at least once in their lives.\",Blog posts, reports, presentations
+Quotation,\"[Famous Person] once said, '[Quotation related to Topic]'.\",Speeches, essays, social posts
+Challenge,\"Most people believe [Common Belief], but [Contradictory Statement].\",Debates, persuasive content, op-eds
+Visual Imagery,\"Imagine [Vivid Description of a Scenario].\",Creative writing, advertising, storytelling
+Call-to-Action,\"If you’ve ever [Experience/Desire], then [Action to take].\",Marketing content, motivational speeches, campaigns
+Historical Reference,\"Back in [Year/Period], [Historical Event] changed the way we think about [Topic].\",Educational content, documentaries, historical analyses
+Anecdotal,\"Once, [Short Anecdote related to Topic].\",Personal blogs, speeches, narrative content
+Humorous,\"Why did [Topic] cross the road? To [Punchline].\",Social media, entertaining content, ice-breakers
+Controversial Statement,\"[Controversial Statement about a Topic].\",Debates, opinion pieces, discussion forums
+Rhetorical Question,\"Have you ever stopped to think about [Thought-Provoking Question]? \",Speeches, persuasive essays, social posts
+\"
+The JSON object:\n\n";
+ 
+    // OpenAI API URL and key
+    $api_url = 'https://api.openai.com/v1/chat/completions';
+    $api_key = 'sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';  // Replace with your actual OpenAI API key
+ 
+    // Headers for the OpenAI API
+    $headers = [
+        'Content-Type' => 'application/json',
+        'Authorization' => 'Bearer ' . $api_key
+    ];
+ 
+    // Body for the OpenAI API
+    $body = [
+        'model' => 'gpt-3.5-turbo',
+        'messages' => [['role' => 'user', 'content' => $prompt]],
+        'temperature' => 0.7
+    ];
+ 
+    // Args for the WordPress HTTP API
+    $args = [
+        'method' => 'POST',
+        'headers' => $headers,
+        'body' => json_encode($body),
+        'timeout' => 120
+    ];
+ 
+    // Send the request
+    $response = wp_remote_request($api_url, $args);
+ 
+    // Handle the response
+    if (is_wp_error($response)) {
+        $error_message = $response->get_error_message();
+        wp_send_json_error("Something went wrong: $error_message");
+    } else {
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_send_json_error('Invalid JSON in API response');
+        } elseif (!isset($data['choices']) || !isset($data['choices'][0]['message']['content'])) {
+            wp_send_json_error('API request failed. Response: ' . $body);
+        } else {
+            $content = $data['choices'][0]['message']['content'];
+            mycred_subtract("Hook Generator", $user_id, 1, 'Token deduction for using hook Generation', time());
+            wp_send_json($content);
+        }
+    }
+ 
+    // Always die in functions echoing AJAX content
+   wp_die();
+}
+ 
+add_action('wp_ajax_openai_generate_text_basic', 'openai_generate_text_basic');
+add_action('wp_ajax_nopriv_openai_generate_text_basic', 'openai_generate_text_basic');
